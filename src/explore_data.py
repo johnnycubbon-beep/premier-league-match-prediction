@@ -1,4 +1,5 @@
 import pandas as pd
+import matplotlib.pyplot as plt
 df = pd.read_csv("C:/Users/johnn/Documents/Python/Prem_Prediction_New/Data/raw/results.csv")
 # print(df.head())
 # print(df.shape)
@@ -49,6 +50,32 @@ team_stats = team_home.join(team_away)
 team_stats["Total Matches"] = team_stats["Home Matches"] + team_stats["Away Matches"]
 team_stats["Total Wins"] = team_stats["Home Wins"] + team_stats["Away Wins"]
 team_stats["Win %"] = 100 * (team_stats["Total Wins"]/team_stats["Total Matches"])
-team_stats["Home - Away Diff"] = team_stats["Home Win %"] - team_stats["Away Win %"]
-print(team_stats.sort_values("Home - Away Diff", ascending=False)["Home - Away Diff"])
+team_stats["Home-Away Diff"] = team_stats["Home Win %"] - team_stats["Away Win %"]
+# print(team_stats.sort_values("Home-Away Diff", ascending=False)[["Home Win %", "Away Win %", "Win %","Home-Away Diff"]])
+teams_to_label = ["Liverpool", "Aston Villa", "Everton", "Chelsea", "Newcastle United","Fulham"]
+# plt.scatter(team_stats[team_stats["Win %"] < 25]["Home Win %"], team_stats[team_stats["Win %"] < 25]["Away Win %"], s=20)
+# plt.plot([0,100], [0,100], linestyle = '--')
+# plt.xlabel("Home Win %")
+# plt.ylabel("Away Win %")
+# plt.title("Premier League Teams: Home vs Away Win %: 2006-07 - 2017-18")
+# for team in team_stats[team_stats["Win %"] < 25].index:
+#     plt.annotate(team, 
+#                 (team_stats.loc[team, "Home Win %"], team_stats.loc[team, "Away Win %"]),
+#                 xytext = (4,4),
+#                 textcoords="offset points",
+#                 fontsize = 4)
+# plt.show()
+# print(team_stats.loc[teams_to_label, "Home Win %"])
+
+season_results = df.groupby("season")["result"].value_counts(normalize=True)
+season_results = season_results.unstack()
+print(season_results[season_results['H'] > 0.47])
+
+season_results.plot()
+plt.xlabel("Season")
+plt.ylabel("Proportion of Matches")
+plt.title("Prem Match Results by Season")
+plt.show()
+
+
 
