@@ -123,6 +123,7 @@ home["Outcome"] = home["Result"].map({
     "D": "D",
     "A": "L"
 })
+home["Venue"] = "Home"
 
 away = df[["Match ID","season","away_team","home_goals", "away_goals", "result"]].copy()
 away = away.rename(columns={"season": "Season",
@@ -136,12 +137,25 @@ away["Outcome"] = away["Result"].map({
     'D':'D',
     'A':'W'
     })
+away["Venue"] = "Away"
 
 all_matches = pd.concat([home, away], ignore_index=True)
 all_matches["Points"] = all_matches["Outcome"].map({'W': 3, 'D': 1, 'L': 0})
-all_matches = all_matches.sort_values("Match ID")
+all_matches = all_matches.sort_values(["Team","Match ID"])
 
 
-rolling_points = all_matches.groupby("Team")["Points"].rolling(5).mean()
-print(rolling_points.iloc[:2])
 
+previous_points = all_matches.groupby("Team")["Points"].shift(1)
+form = previous_points.rolling(5).mean()
+all_matches["Form_5"] = form
+
+# print(all_matches[all_matches["Team"] == "Liverpool"][40:50])
+
+home_points = all_matches[all_matches["Venue"]=="Home"].groupby("Team")["Points"].sum()
+print(home_points)
+
+high_goal_teams = all_matches[all_matches["Goals For"] > 6]["Team"].value_counts()
+print(high_goal_teams)
+
+boring_team = all_matches[(all_matches["Goals For"] == 0) & (all_matches["Goals Against"] == 0)]["Team"].value_counts()
+print(boring_team)
