@@ -151,11 +151,33 @@ all_matches["Form_5"] = form
 
 # print(all_matches[all_matches["Team"] == "Liverpool"][40:50])
 
-home_points = all_matches[all_matches["Venue"]=="Home"].groupby("Team")["Points"].sum()
-print(home_points)
+# home_points = all_matches[all_matches["Venue"]=="Home"].groupby("Team")["Points"].sum()
+# print(home_points)
 
-high_goal_teams = all_matches[all_matches["Goals For"] > 6]["Team"].value_counts()
-print(high_goal_teams)
+# high_goal_teams = all_matches[all_matches["Goals For"] > 6]["Team"].value_counts()
+# print(high_goal_teams)
 
-boring_team = all_matches[(all_matches["Goals For"] == 0) & (all_matches["Goals Against"] == 0)]["Team"].value_counts()
-print(boring_team)
+# boring_team = all_matches[(all_matches["Goals For"] == 0) & (all_matches["Goals Against"] == 0)]["Team"].value_counts()
+# print(boring_team)
+
+home_matches = all_matches[all_matches["Venue"]=="Home"].sort_values(["Team","Match ID"])
+away_matches = all_matches[all_matches["Venue"]=="Away"].sort_values(["Team","Match ID"])
+
+previous_home_points = home_matches["Points"].shift(1)
+home_form = previous_home_points.rolling(5).mean()
+
+previous_away_points = away_matches["Points"].shift(1)
+away_form = previous_away_points.rolling(5).mean()
+
+home_matches["Home Form"] = home_form
+away_matches["Away Form"] = away_form
+
+home_matches = home_matches[["Match ID", "Season","Team","Home Form"]]
+home_matches = home_matches.rename(columns={"Team": "Home Team"})
+
+away_matches = away_matches[["Match ID", "Season","Team","Away Form"]]
+away_matches = away_matches.rename(columns={"Team": "Away Team"})
+
+form_guide = home_matches.merge(away_matches, how='inner', on=['Match ID','Season']).sort_values("Match ID")
+print(form_guide[2000:2020])
+
