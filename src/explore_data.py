@@ -163,21 +163,30 @@ all_matches["Form_5"] = form
 home_matches = all_matches[all_matches["Venue"]=="Home"].sort_values(["Team","Match ID"])
 away_matches = all_matches[all_matches["Venue"]=="Away"].sort_values(["Team","Match ID"])
 
-previous_home_points = home_matches["Points"].shift(1)
+previous_home_points = home_matches.groupby("Team")["Points"].shift(1)
 home_form = previous_home_points.rolling(5).mean()
 
-previous_away_points = away_matches["Points"].shift(1)
+previous_away_points = away_matches.groupby("Team")["Points"].shift(1)
 away_form = previous_away_points.rolling(5).mean()
 
 home_matches["Home Form"] = home_form
 away_matches["Away Form"] = away_form
 
-home_matches = home_matches[["Match ID", "Season","Team","Home Form"]]
+home_matches = home_matches[["Match ID", "Season","Team","Home Form","Result"]]
 home_matches = home_matches.rename(columns={"Team": "Home Team"})
 
-away_matches = away_matches[["Match ID", "Season","Team","Away Form"]]
+away_matches = away_matches[["Match ID", "Season","Team","Away Form","Result"]]
 away_matches = away_matches.rename(columns={"Team": "Away Team"})
 
-form_guide = home_matches.merge(away_matches, how='inner', on=['Match ID','Season']).sort_values("Match ID")
-print(form_guide[2000:2020])
+form_guide = home_matches.merge(away_matches, how='inner', on=['Match ID','Season','Result']).sort_values("Match ID")
+form_guide = form_guide.reset_index(drop=True)
+
+# Dropping the NaN values in home and away form
+form_guide = form_guide.dropna(subset=["Home Form", "Away Form"])
+form_guide = form_guide.reset_index(drop=True)
+print(form_guide.shape)
+
+
+
+
 
