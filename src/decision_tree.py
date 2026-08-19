@@ -4,6 +4,7 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.metrics import accuracy_score
 from sklearn.tree import plot_tree
 from sklearn.metrics import confusion_matrix
+import numpy as np
 
 # Read in the CSV file to a pandas dataframe type
 df = pd.read_csv("C:/Users/johnn/Documents/Python/Prem_Prediction_New/Data/raw/results.csv")
@@ -78,9 +79,22 @@ form_guide = form_guide.dropna(subset=["Home Form", "Away Form"])
 form_guide = form_guide.sort_values("Match ID")
 form_guide = form_guide.reset_index(drop=True)
 
+
+# Initialise Training and Test Data
+split = int(0.8 * len(form_guide))
+form_guide["Basic Pred"] = form_guide["Home Form"] > form_guide["Away Form"]
+form_guide["Basic Pred"] = form_guide["Basic Pred"].map({True: "H", False: "A"})
+form_guide["Correct"] = form_guide["Basic Pred"] == form_guide["Result"]
+form_guide["Correct"] = form_guide["Correct"].map({True: 1, False: 0})
+
+
+
+
 # Define Predictors and Response Variables
 X = form_guide[["Home Form", "Away Form"]]
 Y = form_guide["Result"]
+
+
 
 
 # Initialise Training and Test Data
@@ -107,32 +121,43 @@ tree.fit(X_train, Y_train)
 # Make Predictions
 Y_pred = tree.predict(X_test)
 
-# Compare to the actual results and look at accuracy
-accuracy = accuracy_score(Y_test, Y_pred)
+# # Compare to the actual results and look at accuracy
+# accuracy = accuracy_score(Y_test, Y_pred)
 
-# Looking at what the tree actually looks like
-print(tree.get_depth())
-print(tree.get_n_leaves)
+# # Looking at what the tree actually looks like
+# print(tree.get_depth())
+# print(tree.get_n_leaves)
 
-# Seeing whether there are differences in indentifying home vs away wins
-print(confusion_matrix(Y_test, Y_pred, labels=["H", "D", "A"]))
+# # Seeing whether there are differences in indentifying home vs away wins
+# print(confusion_matrix(Y_test, Y_pred, labels=["H", "D", "A"]))
 
-# Plotting the tree
-plt.figure(figsize=(15,8))
+# # Plotting the tree
+# plt.figure(figsize=(15,8))
 
-plot_tree(
-    tree,
-    feature_names=["Home Form","Away Form"],
-    class_names=["A", "D", "H"],
-    filled=True
-)
+# plot_tree(
+#     tree,
+#     feature_names=["Home Form","Away Form"],
+#     class_names=["A", "D", "H"],
+#     filled=True
+# )
 
-plt.show()
+# plt.show()
 
+# Bootstrapping to see if the tree is genuinely better than the simple method
+B = 10000
+differences = []
+acc_simple = form_guide["Correct"][split:]
+acc_tree = (Y_test == Y_pred).map({True: 1, False: 0})
 
+for _ in range(B):
+    indices = np.random.randint(0, len(Y_test), size=len(Y_test))
+    simple = acc_simple.iloc[indices].mean()
+    tree = acc_tree.iloc[indices].mean()
+    diff = tree - simple
+    differences.append(diff)
 
-
-
+conf_int = np.percentile(differences, [2.5, 97.5])
+print(conf_int)
 
 
 
