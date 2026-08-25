@@ -133,7 +133,7 @@ Y_test = Y.iloc[split:]
 # Run decision tree from scikit learn
 tree_goals = DecisionTreeClassifier(
     criterion="gini",
-    max_depth=3,
+    max_depth=4,
     random_state=42
 )
 
@@ -170,23 +170,23 @@ print(tree_goals.score(X_test,Y_test))
 # plt.show()
 
 # # Bootstrapping to see if the tree is genuinely better than the simple method
-B = 10000
-vals = []
-acc_simple = form_guide["Correct"][split:]
-acc_tree = (Y_test == Y_pred).map({True: 1, False: 0})
-est = acc_tree.mean() - acc_simple.mean()
-for _ in range(B):
-    indices = np.random.randint(0, len(Y_test), size=len(Y_test))
-    simple = acc_simple.iloc[indices].mean()
-    tree = acc_tree.iloc[indices].mean()
-    boot_est = tree - simple
-    vals.append(np.sqrt(len(acc_tree)) * (boot_est - est))
+# B = 10000
+# vals = []
+# acc_simple = form_guide["Correct"][split:]
+# acc_tree = (Y_test == Y_pred).map({True: 1, False: 0})
+# est = acc_tree.mean() - acc_simple.mean()
+# for _ in range(B):
+#     indices = np.random.randint(0, len(Y_test), size=len(Y_test))
+#     simple = acc_simple.iloc[indices].mean()
+#     tree = acc_tree.iloc[indices].mean()
+#     boot_est = tree - simple
+#     vals.append(np.sqrt(len(acc_tree)) * (boot_est - est))
 
-quantiles = np.percentile(vals, [2.5, 97.5])
-conf_int = [0,0]
-conf_int[0] = est - quantiles[1] / (np.sqrt(len(acc_tree)))
-conf_int[1] = est - quantiles[0] / (np.sqrt(len(acc_tree)))
-print(conf_int)
+# quantiles = np.percentile(vals, [2.5, 97.5])
+# conf_int = [0,0]
+# conf_int[0] = est - quantiles[1] / (np.sqrt(len(acc_tree)))
+# conf_int[1] = est - quantiles[0] / (np.sqrt(len(acc_tree)))
+# print(conf_int)
 # Testing on multiple different tree depths (ie changing the complexity of the hypothesis class)
 # depths = [1,2,3,4,5,6,8,10]
 # train_accuracy = []
