@@ -119,6 +119,8 @@ Y = form_guide["Result"]
 # Initialise Training and Test Data
 split = int(0.8 * len(form_guide))
 
+print(form_guide.iloc[split:]["Season"].value_counts())
+
 # Predictor Data
 X_train = X.iloc[:split]
 X_test = X.iloc[split:]
@@ -127,28 +129,29 @@ X_test = X.iloc[split:]
 Y_train = Y.iloc[:split]
 Y_test = Y.iloc[split:]
 
+
 # print(X_train.shape)
 # print(X_test.shape)
 
-# Run decision tree from scikit learn
-tree_goals = DecisionTreeClassifier(
-    criterion="gini",
-    max_depth=4,
-    random_state=42
-)
+# # Run decision tree from scikit learn
+# tree_goals = DecisionTreeClassifier(
+#     criterion="gini",
+#     max_depth=3,
+#     random_state=42
+# )
 
-# Fit to the training data
-tree_goals.fit(X_train, Y_train)
+# # Fit to the training data
+# tree_goals.fit(X_train, Y_train)
 
-# Make Predictions
-Y_pred = tree_goals.predict(X_test)
+# # Make Predictions
+# Y_pred = tree_goals.predict(X_test)
 
-# Compare to the actual results and look at accuracy
-accuracy = accuracy_score(Y_test, Y_pred)
+# # Compare to the actual results and look at accuracy
+# accuracy = accuracy_score(Y_test, Y_pred)
 
-# Get training and test accuracy for our new model with extra predictors
-print(tree_goals.score(X_train,Y_train))
-print(tree_goals.score(X_test,Y_test))
+# # Get training and test accuracy for our new model with extra predictors
+# print(tree_goals.score(X_train,Y_train))
+# print(tree_goals.score(X_test,Y_test))
 
 # # Looking at what the tree actually looks like
 # print(tree.get_depth())

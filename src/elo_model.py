@@ -185,20 +185,25 @@ X = form_guide[["Home Form",
 Y = form_guide["Result"]
 
 # Choose training to test split at the start of the 2020-2021 season (Liverpool Champions)
-split = form_guide[form_guide["Season"] == "2020-2021"].index[0]
+split_0 = form_guide[form_guide["Season"] == "2006-2007"].index[0]
+split_1 = form_guide[form_guide["Season"] == "2015-2016"].index[-78]
+split_2 = form_guide[form_guide["Season"] == "2017-2018"].index[-1]
+
+# print(form_guide.iloc[split_1:split_2]["Season"].value_counts())
 
 # Predictor Data
-X_train = X.iloc[:split]
-X_test = X.iloc[split:]
+X_train = X.iloc[split_0:split_1]
+X_test = X.iloc[split_1:split_2]
 
 # Response Data
-Y_train = Y.iloc[:split]
-Y_test = Y.iloc[split:]
+Y_train = Y.iloc[split_0:split_1]
+Y_test = Y.iloc[split_1:split_2]
+
 
 # Run decision tree from scikit learn
 tree = DecisionTreeClassifier(
     criterion='gini',
-    max_depth=6,
+    max_depth=4,
     random_state=42)
 
 # Fit to the training data
@@ -211,30 +216,30 @@ Y_pred = tree.predict(X_test)
 print(tree.score(X_train,Y_train))
 print(tree.score(X_test,Y_test))
 
-# Bootstrapping to see if the tree is genuinely better than the simple method
-B = 10000
-vals = []
-vals_tree = []
-acc_simple = form_guide["Correct"][split:]
-print(f"Mean Accuracy for the Simple Method of Prediction is {acc_simple.mean()}")
-acc_tree = (Y_test == Y_pred).map({True: 1, False: 0})
-print(f"Mean Accuracy for the Decision Tree is {acc_tree.mean()}")
-est = acc_tree.mean() - acc_simple.mean()
-for _ in range(B):
-    indices = np.random.randint(0, len(Y_test), size=len(Y_test))
-    simple = acc_simple.iloc[indices].mean()
-    tree = acc_tree.iloc[indices].mean()
-    boot_est = tree - simple
-    vals.append(np.sqrt(len(acc_tree)) * (boot_est - est))
-    vals_tree.append(simple)
+# # Bootstrapping to see if the tree is genuinely better than the simple method
+# B = 10000
+# vals = []
+# vals_tree = []
+# acc_simple = form_guide["Correct"][split:]
+# print(f"Mean Accuracy for the Simple Method of Prediction is {acc_simple.mean()}")
+# acc_tree = (Y_test == Y_pred).map({True: 1, False: 0})
+# print(f"Mean Accuracy for the Decision Tree is {acc_tree.mean()}")
+# est = acc_tree.mean() - acc_simple.mean()
+# for _ in range(B):
+#     indices = np.random.randint(0, len(Y_test), size=len(Y_test))
+#     simple = acc_simple.iloc[indices].mean()
+#     tree = acc_tree.iloc[indices].mean()
+#     boot_est = tree - simple
+#     vals.append(np.sqrt(len(acc_tree)) * (boot_est - est))
+#     vals_tree.append(simple)
 
-quantiles = np.percentile(vals, [2.5, 97.5])
-quantiles_2 = np.percentile(vals_tree,[2.5, 97.5])
-print(quantiles_2)
-conf_int = [0,0]
-conf_int[0] = est - quantiles[1] / (np.sqrt(len(acc_tree)))
-conf_int[1] = est - quantiles[0] / (np.sqrt(len(acc_tree)))
-print(conf_int)
+# quantiles = np.percentile(vals, [2.5, 97.5])
+# quantiles_2 = np.percentile(vals_tree,[2.5, 97.5])
+# print(quantiles_2)
+# conf_int = [0,0]
+# conf_int[0] = est - quantiles[1] / (np.sqrt(len(acc_tree)))
+# conf_int[1] = est - quantiles[0] / (np.sqrt(len(acc_tree)))
+# print(conf_int)
 
 
 
