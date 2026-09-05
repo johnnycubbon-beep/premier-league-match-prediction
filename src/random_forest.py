@@ -1,6 +1,6 @@
 import pandas as pd
 import matplotlib.pyplot as plt
-from sklearn.tree import DecisionTreeClassifier
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score
 from sklearn.tree import plot_tree
 from sklearn.metrics import confusion_matrix
@@ -181,11 +181,8 @@ form_guide["Correct"] = form_guide["Correct"].map({True: 1, False: 0})
 X = form_guide[[
     "Home ELO",
     "Away ELO",
-                ]]
-# "Home Form",
-# "Away Form",
-# "Home ELO",
-# "Away ELO",
+    "Home Form",
+    "Away Form"]]
 Y = form_guide["Result"]
 
 # Choose training to test split at the start of the 2020-2021 season (Liverpool Champions)
@@ -201,43 +198,31 @@ X_test = X.iloc[split:]
 Y_train = Y.iloc[:split]
 Y_test = Y.iloc[split:]
 
-
-# Run decision tree from scikit learn
-tree = DecisionTreeClassifier(
+# Initialise the random forest
+forest = RandomForestClassifier(
+    n_estimators=100,
     criterion='gini',
-    max_depth=6,
-    random_state=42)
+    max_depth=7,
+    min_samples_split=10,
+    max_features=3,
+    bootstrap=True,
+    max_samples=None
+)
+# Fit the forest to our training data
+forest.fit(X_train,Y_train)
 
-# Fit to the training data
-tree.fit(X_train, Y_train)
+print(forest.n_classes_)
+# Make predictions on the test data
+Y_pred = forest.predict(X_test)
 
-# Make Predictions on the test data
-Y_pred = tree.predict(X_test)
+# Get the training and test accuracy of the fitted estimator
+train_acc = forest.score(X_train,Y_train)
+test_acc = forest.score(X_test,Y_test)
+print(f"Training Accuracy for the model is {train_acc*100}%. Test Accuracy is {test_acc*100}%.")
 
-# Get the accuracy on the training and test data
-print(tree.score(X_train,Y_train))
-print(tree.score(X_test,Y_test))
-
-# Bootstrapping to see if the tree is genuinely better than the simple method
-B = 10000
-vals = []
-vals_tree = []
-acc_simple = form_guide["Correct"][split:]
-print(f"Mean Accuracy for the Simple Method of Prediction is {acc_simple.mean()}")
-acc_tree = (Y_test == Y_pred).map({True: 1, False: 0})
-print(f"Mean Accuracy for the Decision Tree is {acc_tree.mean()}")
-est = acc_tree.mean() - acc_simple.mean()
-for _ in range(B):
-    indices = np.random.randint(0, len(Y_test), size=len(Y_test))
-    simple = acc_simple.iloc[indices].mean()
-    tree = acc_tree.iloc[indices].mean()
-    boot_est = tree - simple
-    vals.append(np.sqrt(len(acc_tree)) * (boot_est - est))
-    vals_tree.append(simple)
-
-quantiles = np.percentile(vals, [2.5, 97.5])
-conf_int = [0,0]
-conf_int[0] = est - quantiles[1] / (np.sqrt(len(acc_tree)))
-conf_int[1] = est - quantiles[0] / (np.sqrt(len(acc_tree)))
-print(f"{conf_int} is a 95% confidence interval for the difference in accuracy between tree and simple method")
-
+# pred = [res == "H" for res in Y_pred]
+# test = [res == "H" for res in Y_test]
+# arr = np.stack([pred,test],axis=1)
+# correct = [(pair[0] == pair[1]) for pair in arr]
+# acc = sum(correct)/len(correct)
+# print(acc)
