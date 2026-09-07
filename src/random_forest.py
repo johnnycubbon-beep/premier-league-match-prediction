@@ -80,36 +80,59 @@ home_matches = all_matches[all_matches["Venue"]=="Home"].sort_values(["Team","Ma
 away_matches = all_matches[all_matches["Venue"]=="Away"].sort_values(["Team","Match ID"])
 
 # Home rolling means for goals for and against and points
-previous_home_points = home_matches.groupby("Team")[["Points","Goals For","Goals Against"]].shift(1)
-home_form = previous_home_points["Points"].rolling(6).mean()
-home_attack_form = previous_home_points["Goals For"].rolling(10).mean()
-home_defense_form = previous_home_points["Goals Against"].rolling(10).mean()
+home_form = (
+    home_matches.groupby("Team")["Points"]
+    .transform(lambda x: x.shift(1).rolling(6).mean())
+)
+
+home_attack_form = (
+    home_matches.groupby("Team")["Goals For"]
+    .transform(lambda x: x.shift(1).rolling(10).mean())
+)
+
+home_defense_form = (
+    home_matches.groupby("Team")["Goals Against"]
+    .transform(lambda x: x.shift(1).rolling(10).mean())
+)
 
 
 # Away rolling means for goals for and against and points
-previous_away_points = away_matches.groupby("Team")[["Points","Goals For","Goals Against"]].shift(1)
-away_form = previous_away_points["Points"].rolling(6).mean()
-away_attack_form = previous_away_points["Goals For"].rolling(10).mean()
-away_defense_form = previous_away_points["Goals Against"].rolling(10).mean()
+away_form = (
+    away_matches.groupby("Team")["Points"]
+    .transform(lambda x: x.shift(1).rolling(6).mean())
+)
+
+away_attack_form = (
+    away_matches.groupby("Team")["Goals For"]
+    .transform(lambda x: x.shift(1).rolling(10).mean())
+)
+
+away_defense_form = (
+    away_matches.groupby("Team")["Goals Against"]
+    .transform(lambda x: x.shift(1).rolling(10).mean())
+)
+
 
 # Adding form metrics to home_matches
 home_matches["Home Form"] = home_form
 home_matches["Home Attack Form"] = home_attack_form
 home_matches["Home Defense Form"] = home_defense_form
 
+
+
 # Adding form metrics to away matches
 away_matches["Away Form"] = away_form
 away_matches["Away Attack Form"] = away_attack_form
 away_matches["Away Defense Form"] = away_defense_form
 
-home_matches = home_matches[["Match ID","Season","Team","Home Form","Home Attack Form","Home Defense Form","Result"]]
-home_matches = home_matches.rename(columns={"Team": "Home Team"})
+home_matches_2 = home_matches[["Match ID","Season","Team","Home Form","Home Attack Form","Home Defense Form","Result"]]
+home_matches_2 = home_matches_2.rename(columns={"Team": "Home Team"})
 
-away_matches = away_matches[["Match ID","Season","Team","Away Form","Away Attack Form","Away Defense Form","Result"]]
-away_matches = away_matches.rename(columns={"Team": "Away Team"})
+away_matches_2 = away_matches[["Match ID","Season","Team","Away Form","Away Attack Form","Away Defense Form","Result"]]
+away_matches_2 = away_matches_2.rename(columns={"Team": "Away Team"})
 
 # Merging home and away dataframes according to Match ID, Season and Result
-form_guide = home_matches.merge(away_matches, how='inner', on=['Match ID','Season','Result']).sort_values("Match ID")
+form_guide = home_matches_2.merge(away_matches_2, how='inner', on=['Match ID','Season','Result']).sort_values("Match ID")
 form_guide = form_guide.reset_index(drop=True)
 
 # Initialising ELO
@@ -176,6 +199,8 @@ form_guide["Basic Pred"] = form_guide["Basic Pred"].map({True: "H", False: "A"})
 form_guide["Correct"] = form_guide["Basic Pred"] == form_guide["Result"]
 form_guide["Correct"] = form_guide["Correct"].map({True: 1, False: 0})
 
+# print(form_guide[(form_guide["Home Team"]=="Liverpool") & (form_guide["Match ID"]>1700) & (form_guide["Match ID"]<2150)])
+# print(home_matches[(home_matches["Team"]=="Liverpool") & (home_matches["Match ID"]>1700) & (home_matches["Match ID"]<2150)])
 
 # Define Predictors and Response Variables
 X = form_guide[[
@@ -187,8 +212,6 @@ Y = form_guide["Result"]
 
 # Choose training to test split at the start of the 2020-2021 season (Liverpool Champions)
 split = form_guide[form_guide["Season"] == "2020-2021"].index[0]
-
-# print(form_guide.iloc[split_1:split_2]["Season"].value_counts())
 
 # Predictor Data
 X_train = X.iloc[:split]
