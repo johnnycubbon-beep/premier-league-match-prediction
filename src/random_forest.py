@@ -7,7 +7,7 @@ from sklearn.metrics import confusion_matrix
 import numpy as np
 import json
 
-# seasons = [f"{i}-{i+1}" for i in range(1993,2026)] 
+seasons = [f"{i}-{i+1}" for i in range(1993,2026)] 
 # L = len(seasons)
 # dfs = []
 # for season in seasons:
@@ -32,18 +32,20 @@ import json
 # season_teams = df.groupby("season")["HomeTeam"].unique()
 
 # # Creating a dictionary with the keys as the seasons and the values as the list of teams relegated
-# relegated_teams = {}
+# promoted_teams = {}
 # for i in range(L-1):
-#     rel = []
+#     prom = []
 #     season_now = seasons[i]
 #     season_next = seasons[i+1]
 #     teams_now = season_teams.loc[season_now]
 #     teams_next = season_teams.loc[season_next]
 
-#     for team in teams_now:
-#         if team not in teams_next:
-#             rel.append(team)
-#     relegated_teams[season_now] = rel
+#     for team in teams_next:
+#         if team not in teams_now:
+#             prom.append(team)
+#     promoted_teams[season_now] = prom
+
+
 
 
 
@@ -171,57 +173,73 @@ form_guide = pd.read_csv("C:/Users/johnn/Documents/Python/Prem_Prediction_New/Da
 df = pd.read_csv("C:/Users/johnn/Documents/Python/Prem_Prediction_New/Data/processed/full_prem_data.csv")
 with open("C:/Users/johnn/Documents/Python/Prem_Prediction_New/Data/processed/relegated.json", "r") as f:
     relegated_teams = json.load(f)
-
+with open("C:/Users/johnn/Documents/Python/Prem_Prediction_New/Data/processed/promoted.json", "r") as f:
+    promoted_teams = json.load(f)
 relegated_teams["1995-1996"] = ["Man City","Bolton","QPR"]
+relegated_teams["2014-2015"] = ["QPR","Burnley","Hull"]
+promoted_teams["2013-2014"] = ["Leicester","QPR","Burnley"]
+
+season_start_indices = df.groupby("season").first()["Match ID"].iloc[1:].values
 
 
 
-# # Initialising ELO
-# elo = {}
-# home_elos = []
-# away_elos = []
 
-# # ELO constant initialisation
-# K = 20
+# Initialising ELO
+elo = {}
+home_elos = []
+away_elos = []
 
-# # Loop through all the matches and update the elo dictionary after each match
-# for i in df.index:
-#     home_team = df.iloc[i]["home_team"]
-#     away_team = df.iloc[i]["away_team"]
-#     result   = df.iloc[i]["result"]
-#     season   = df.iloc[i]["season"]
+# ELO constant initialisation
+K = 20
 
-#     # If team not seen before initialise elo as 1500
-#     if home_team in elo:
-#         home_elo = elo[home_team]
-#     else:
-#         home_elo = 1500
+# Loop through all the matches and update the elo dictionary after each match
+for i in df.index:
+    
+    home_team = df.iloc[i]["home_team"]
+    away_team = df.iloc[i]["away_team"]
+    result   = df.iloc[i]["result"]
+    season   = df.iloc[i]["season"]
 
-#     if away_team in elo:
-#         away_elo = elo[away_team]
-#     else:
-#         away_elo = 1500
+    if i in season_start_indices:
+        if i == season_start_indices[0]:
+            print(elo)
+        last_season = df.iloc[i-1]["season"]
+        for team in relegated_teams[last_season]:
+            elo.pop(team)
 
-#     # Add to respective elo lists
-#     home_elos.append(home_elo)
-#     away_elos.append(away_elo)
+    # If team not seen before initialise elo as 1500
+    if home_team in elo:
+        home_elo = elo[home_team]
+    else:
+        home_elo = 1500
 
-#     # Home win and away win probabilities
-#     h_prob = 1 / (1 + 10**((away_elo - home_elo)/400))
-#     a_prob = 1 - h_prob
+    if away_team in elo:
+        away_elo = elo[away_team]
+    else:
+        away_elo = 1500
 
-#     # Getting the home score
-#     if result == 'H':
-#         h_score = 1
-#     elif result == 'A':
-#         h_score = 0
-#     elif result == 'D':
-#         h_score = 0.5
-#     a_score = 1 - h_score
+    # Add to respective elo lists
+    home_elos.append(home_elo)
+    away_elos.append(away_elo)
 
-#     # Formula for the ELO changes: if h_prob close to zero and h_score==1 biggest change
-#     elo[home_team] = home_elo + K * (h_score - h_prob)
-#     elo[away_team] = away_elo + K * (a_score - a_prob)
+    # Home win and away win probabilities
+    h_prob = 1 / (1 + 10**((away_elo - home_elo)/400))
+    a_prob = 1 - h_prob
+
+    # Getting the home score
+    if result == 'H':
+        h_score = 1
+    elif result == 'A':
+        h_score = 0
+    elif result == 'D':
+        h_score = 0.5
+    a_score = 1 - h_score
+
+    # Formula for the ELO changes: if h_prob close to zero and h_score==1 biggest change
+    elo[home_team] = home_elo + K * (h_score - h_prob)
+    elo[away_team] = away_elo + K * (a_score - a_prob)
+
+print(elo)
 
 # # Adding ELO columns to both df and form_guide 
 # df["Home ELO"] = home_elos
