@@ -8,7 +8,7 @@ import numpy as np
 import json
 
 seasons = [f"{i}-{i+1}" for i in range(1993,2026)] 
-# L = len(seasons)
+L = len(seasons)
 # dfs = []
 # for season in seasons:
 #     path = "C:/Users/johnn/Documents/Python/Prem_Prediction_New/Data/raw/" + season + ".csv"
@@ -23,6 +23,8 @@ seasons = [f"{i}-{i+1}" for i in range(1993,2026)]
 #         print(f"ERROR in season {season}: {e}")
 #         break
 # df = pd.concat(dfs, ignore_index=True)
+# df = df.dropna()
+
 
 
 # # Setting column with match ID helps to get around indices getting messed up
@@ -45,6 +47,9 @@ seasons = [f"{i}-{i+1}" for i in range(1993,2026)]
 #             prom.append(team)
 #     promoted_teams[season_now] = prom
 
+# with open("C:/Users/johnn/Documents/Python/Prem_Prediction_New/Data/processed/promoted.json", "w") as f:
+#     json.dump(promoted_teams, f, indent=4)
+
 
 
 
@@ -55,6 +60,8 @@ seasons = [f"{i}-{i+1}" for i in range(1993,2026)]
 #                      "FTHG":"home_goals",
 #                      "FTAG":"away_goals",
 #                      "FTR":"result"})
+
+# df.to_csv("C:/Users/johnn/Documents/Python/Prem_Prediction_New/Data/processed/full_prem_data.csv", index=False)
 
 
 
@@ -168,18 +175,26 @@ seasons = [f"{i}-{i+1}" for i in range(1993,2026)]
 # form_guide["Correct"] = form_guide["Basic Pred"] == form_guide["Result"]
 # form_guide["Correct"] = form_guide["Correct"].map({True: 1, False: 0})
 
+# form_guide.to_csv("C:/Users/johnn/Documents/Python/Prem_Prediction_New/Data/processed/prem_form_guide.csv")
+
 
 form_guide = pd.read_csv("C:/Users/johnn/Documents/Python/Prem_Prediction_New/Data/processed/prem_form_guide.csv")
 df = pd.read_csv("C:/Users/johnn/Documents/Python/Prem_Prediction_New/Data/processed/full_prem_data.csv")
+
 with open("C:/Users/johnn/Documents/Python/Prem_Prediction_New/Data/processed/relegated.json", "r") as f:
     relegated_teams = json.load(f)
 with open("C:/Users/johnn/Documents/Python/Prem_Prediction_New/Data/processed/promoted.json", "r") as f:
     promoted_teams = json.load(f)
-relegated_teams["1995-1996"] = ["Man City","Bolton","QPR"]
-relegated_teams["2014-2015"] = ["QPR","Burnley","Hull"]
-promoted_teams["2013-2014"] = ["Leicester","QPR","Burnley"]
+
+
 
 season_start_indices = df.groupby("season").first()["Match ID"].iloc[1:].values
+
+# print(form_guide.shape)
+# print(df.shape)
+# print(relegated_teams)
+# print(season_start_indices)
+# print(promoted_teams)
 
 
 
@@ -189,8 +204,10 @@ elo = {}
 home_elos = []
 away_elos = []
 
-# ELO constant initialisation
+# ELO constant initialisations. K determines the size of the changes after each match. 
+# d determines how much promoted team ELO is discounted.
 K = 20
+d = 150
 
 # Loop through all the matches and update the elo dictionary after each match
 for i in df.index:
@@ -201,22 +218,25 @@ for i in df.index:
     season   = df.iloc[i]["season"]
 
     if i in season_start_indices:
-        if i == season_start_indices[0]:
-            print(elo)
         last_season = df.iloc[i-1]["season"]
+        
         for team in relegated_teams[last_season]:
             elo.pop(team)
 
     # If team not seen before initialise elo as 1500
     if home_team in elo:
         home_elo = elo[home_team]
-    else:
+    elif season == "1993-1994":
         home_elo = 1500
+    else:
+        home_elo = (sum(elo.values())/len(elo.values())) - d
 
     if away_team in elo:
         away_elo = elo[away_team]
-    else:
+    elif season == "1993-1994":
         away_elo = 1500
+    else:
+        away_elo = (sum(elo.values())/len(elo.values())) - d
 
     # Add to respective elo lists
     home_elos.append(home_elo)
@@ -239,61 +259,60 @@ for i in df.index:
     elo[home_team] = home_elo + K * (h_score - h_prob)
     elo[away_team] = away_elo + K * (a_score - a_prob)
 
-print(elo)
-
-# # Adding ELO columns to both df and form_guide 
-# df["Home ELO"] = home_elos
-# df["Away ELO"] = away_elos
-# form_guide["Home ELO"] = home_elos
-# form_guide["Away ELO"] = away_elos
+# Adding ELO columns to both df and form_guide 
+df["Home ELO"] = home_elos
+df["Away ELO"] = away_elos
+elo_data = df[["Match ID","Home ELO","Away ELO"]]
+form_guide = form_guide.merge(elo_data,on="Match ID",how="left")
 
 
-
-# # print(form_guide[(form_guide["Home Team"]=="Chelsea") & (form_guide["Match ID"]>1700) & (form_guide["Match ID"]<2150)][["Home Form","Home Attack Form","Home Defense Form"]])
-# # print(home_matches[(home_matches["Team"]=="Chelsea") & (home_matches["Match ID"]>1700) & (home_matches["Match ID"]<2150)][["Goals For","Goals Against","Points"]])
+# print(df[df["Match ID"]==11003][["home_team","away_team","Home ELO","Away ELO"]])
+# print(form_guide[form_guide["Match ID"]==11003][["Home Team","Away Team","Home ELO","Away ELO"]])
 
 
 
-# # Define Predictors and Response Variables
-# X = form_guide[[
-#     "Home ELO",
-#     "Away ELO",
-#     "Home Form",
-#     "Away Form"]]
-# Y = form_guide["Result"]
 
-# # Choose training to test split at the start of the 2020-2021 season (Liverpool Champions)
-# split = form_guide[form_guide["Season"] == "2020-2021"].index[0]
+#Define Predictors and Response Variables
+X = form_guide[[
+    "Home ELO",
+    "Away ELO",
+    "Home Form",
+    "Away Form"]]
+Y = form_guide["Result"]
 
-# # Predictor Data
-# X_train = X.iloc[:split]
-# X_test = X.iloc[split:]
+# Keeping 2020-2021 to 2025-2026 as precious test data then tuning the parameters 
+# using everything up to this point 
+split_1 = form_guide[form_guide["Season"] == "2016-2017"].index[0]
+split_2 = form_guide[form_guide["Season"] == "2018-2019"].index[0]
 
-# # Response Data
-# Y_train = Y.iloc[:split]
-# Y_test = Y.iloc[split:]
+# Predictor Data
+X_train = X.iloc[:split_1]
+X_test = X.iloc[split_1:split_2]
 
-# # Initialise the random forest
-# forest = RandomForestClassifier(
-#     n_estimators=100,
-#     criterion='gini',
-#     max_depth=7,
-#     min_samples_split=10,
-#     max_features=3,
-#     bootstrap=True,
-#     max_samples=None
-# )
-# # Fit the forest to our training data
-# forest.fit(X_train,Y_train)
+# Response Data
+Y_train = Y.iloc[:split_1]
+Y_test = Y.iloc[split_1:split_2]
 
-# print(forest.n_classes_)
-# # Make predictions on the test data
-# Y_pred = forest.predict(X_test)
+# Initialise the random forest
+forest = RandomForestClassifier(
+    n_estimators=100,
+    criterion='gini',
+    max_depth=6,
+    max_features=3,
+    bootstrap=True,
+    max_samples=None
+)
+# Fit the forest to our training data
+forest.fit(X_train,Y_train)
 
-# # Get the training and test accuracy of the fitted estimator
-# train_acc = forest.score(X_train,Y_train)
-# test_acc = forest.score(X_test,Y_test)
-# print(f"Training Accuracy for the model is {train_acc*100}%. Test Accuracy is {test_acc*100}%.")
+print(forest.n_classes_)
+# Make predictions on the test data
+Y_pred = forest.predict(X_test)
+
+# Get the training and test accuracy of the fitted estimator
+train_acc = forest.score(X_train,Y_train)
+test_acc = forest.score(X_test,Y_test)
+print(f"Training Accuracy for the model is {train_acc*100}%. Test Accuracy is {test_acc*100}%.")
 
 # pred = [res == "H" for res in Y_pred]
 # test = [res == "H" for res in Y_test]
