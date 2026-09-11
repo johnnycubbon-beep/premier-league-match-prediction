@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.metrics import accuracy_score
 from sklearn.tree import plot_tree
-from sklearn.metrics import confusion_matrix
+from sklearn.metrics import ConfusionMatrixDisplay
 import numpy as np
 
 seasons = [f"{i}-{i+1}" for i in range(1993,2026)]
@@ -181,35 +181,51 @@ form_guide["Correct"] = form_guide["Correct"].map({True: 1, False: 0})
 X = form_guide[[
     "Home ELO",
     "Away ELO",
-                ]]
-# "Home Form",
-# "Away Form",
+    ]]
 # "Home ELO",
 # "Away ELO",
 Y = form_guide["Result"]
 
 # Choose training to test split at the start of the 2020-2021 season (Liverpool Champions)
-split = form_guide[form_guide["Season"] == "2020-2021"].index[0]
-
+split_1 = form_guide[form_guide["Season"] == "2016-2017"].index[0]
+split_2 = form_guide[form_guide["Season"] == "2018-2019"].index[0]
 # print(form_guide.iloc[split_1:split_2]["Season"].value_counts())
 
 # Predictor Data
-X_train = X.iloc[:split]
-X_test = X.iloc[split:]
+X_train = X.iloc[:split_1]
+X_test = X.iloc[split_1:split_2]
 
 # Response Data
-Y_train = Y.iloc[:split]
-Y_test = Y.iloc[split:]
+Y_train = Y.iloc[:split_1]
+Y_test = Y.iloc[split_1:split_2]
 
 
 # Run decision tree from scikit learn
 tree = DecisionTreeClassifier(
     criterion='gini',
-    max_depth=6,
+    max_depth=4,
     random_state=42)
 
 # Fit to the training data
 tree.fit(X_train, Y_train)
+
+# Plot the tree
+plt.figure(figsize=(20,10))
+plot_tree(
+    tree,
+    feature_names=X.columns,
+    class_names=["A","D","H"],
+    filled=True
+    )
+plt.show()
+
+# Confusion Matrix 
+ConfusionMatrixDisplay.from_predictions(
+    Y_test,
+    tree.predict(X_test),
+    display_labels=tree.classes_
+)
+plt.show()
 
 # Make Predictions on the test data
 Y_pred = tree.predict(X_test)
@@ -222,7 +238,7 @@ print(tree.score(X_test,Y_test))
 B = 10000
 vals = []
 vals_tree = []
-acc_simple = form_guide["Correct"][split:]
+acc_simple = form_guide["Correct"][split_1:]
 print(f"Mean Accuracy for the Simple Method of Prediction is {acc_simple.mean()}")
 acc_tree = (Y_test == Y_pred).map({True: 1, False: 0})
 print(f"Mean Accuracy for the Decision Tree is {acc_tree.mean()}")

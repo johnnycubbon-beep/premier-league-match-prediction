@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score
 from sklearn.tree import plot_tree
-from sklearn.metrics import confusion_matrix
+from sklearn.metrics import ConfusionMatrixDisplay      
 import numpy as np
 import json
 
@@ -313,6 +313,14 @@ Y_pred = forest.predict(X_test)
 train_acc = forest.score(X_train,Y_train)
 test_acc = forest.score(X_test,Y_test)
 print(f"Training Accuracy for the model is {train_acc*100}%. Test Accuracy is {test_acc*100}%.")
+
+# Confusion Matrix 
+ConfusionMatrixDisplay.from_predictions(
+    Y_test,
+    forest.predict(X_test),
+    display_labels=forest.classes_
+)
+plt.show()
 
 # pred = [res == "H" for res in Y_pred]
 # test = [res == "H" for res in Y_test]
