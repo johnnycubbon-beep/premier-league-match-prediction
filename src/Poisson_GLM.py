@@ -1,9 +1,11 @@
 import pandas as pd
 import statsmodels.api as sm
+import statsmodels.formula.api as smf
 import numpy as np
 import json
 import matplotlib.pyplot as plt
-
+import math
+from sklearn.metrics import accuracy_score
 
 
 form_guide = pd.read_csv("C:/Users/johnn/Documents/Python/Prem_Prediction_New/Data/processed/prem_form_guide.csv")
@@ -85,37 +87,119 @@ elo_data = df[["Match ID","Home ELO","Away ELO","home_goals","away_goals"]]
 form_guide = form_guide.merge(elo_data,on="Match ID",how="left")
 
 # Adding ELO difference and form difference to form guide
-form_guide["ELO diff"] = form_guide["Home ELO"] - form_guide["Away ELO"]
-form_guide["Form diff"] = form_guide["Home Form"] - form_guide["Away Form"]
-form_guide["Attack diff"] = form_guide["Home Attack Form"] - form_guide["Away Attack Form"]
-form_guide["Defense diff"] = form_guide["Home Defense Form"] - form_guide["Away Defense Form"]
+form_guide["ELO_diff"] = form_guide["Home ELO"] - form_guide["Away ELO"]
+form_guide["Form_diff"] = form_guide["Home Form"] - form_guide["Away Form"]
+form_guide["Attack_diff"] = form_guide["Home Attack Form"] - form_guide["Away Attack Form"]
+form_guide["Defense_diff"] = form_guide["Home Defense Form"] - form_guide["Away Defense Form"]
 
-# Define Predictors and Response Variables
-X = form_guide[[
-    "ELO diff",
-    "Form diff"
-    ]]
+# print(form_guide.columns)
 
-# Add column of ones in the predictor matrix
-X = sm.add_constant(X)
-Y = form_guide["home_goals"]
+# Defining the training, validation and test data
+train_split = form_guide[form_guide["Season"]=="2018-2019"].index[0]
+val_split = form_guide[form_guide["Season"]=="2020-2021"].index[0]
 
-# Define GLM model
-model = sm.GLM(
-    Y,
-    X,
+train_data = form_guide.iloc[:train_split]
+val_data = form_guide.iloc[train_split:val_split]
+test_data = form_guide.iloc[val_split:]
+
+# # FIRST IMPLEMENTATION OF THE GLM
+
+# # Define Predictors and Response Variables
+# X = train_data[[
+#     "ELO_diff",
+#     "Form_diff",
+#     "Attack_diff",
+#     "Defense_diff"
+#     ]]
+
+# # Add column of ones in the predictor matrix
+# X = sm.add_constant(X)
+# Y = train_data["home_goals"]
+
+# # Define GLM model
+# model = sm.GLM(
+#     Y,
+#     X,
+#     family=sm.families.Poisson()
+# )
+# # Fit the model
+# results = model.fit()
+
+# # Get model parameters
+# print(results.params)
+
+# new_match = pd.DataFrame({
+#     "const": [1],
+#     "ELO_diff":[-200],
+#     "Form_diff":[1]
+# })
+
+# print(results.predict(new_match))
+
+
+
+
+# SECOND IMPLEMENTATION OF THE GLM
+home_model = smf.glm(
+    formula="home_goals ~ ELO_diff + Form_diff + Attack_diff + Defense_diff",
+    data=train_data,
     family=sm.families.Poisson()
 )
-# Fit the model
-results = model.fit()
+home_results = home_model.fit()
+# print(home_results.summary())
 
-# Get model parameters
-print(results.params)
+away_model = smf.glm(
+    formula="away_goals ~ ELO_diff + Form_diff + Attack_diff + Defense_diff",
+    data=train_data,
+    family=sm.families.Poisson()
+)
 
-new_match = pd.DataFrame({
-    "const": [1],
-    "ELO diff":[-200],
-    "Form diff":[1]
-})
+away_results = away_model.fit()
+# print(away_results.summary())
 
-print(results.predict(new_match))
+
+
+
+
+def get_probabilities(l_H,l_A):
+
+    N = max(l_H,l_A)
+    poisson_func = lambda x: (x[1]**x[0] * np.exp(-x[1]))/math.factorial(x[0])
+    home_probs = [poisson_func([x,l_H]) for x in range(int(5*N))]
+    away_probs = [poisson_func([x,l_A]) for x in range(int(5*N))]
+
+    home_sum = 0
+    draw_sum = 0
+    away_sum = 0
+    for i in range(int(5*N)):
+        h_prob = home_probs[i]
+        home_sum += (h_prob * sum(away_probs[:i]))
+        draw_sum += (h_prob * away_probs[i])
+        away_sum += (h_prob * sum(away_probs[i+1:]))
+
+    return {"H":home_sum,"D":draw_sum,"A":away_sum}
+
+
+
+predictions = []
+
+for _, row in val_data.iterrows():
+    X = pd.DataFrame({
+        "ELO_diff": [row["ELO_diff"]],
+        "Form_diff":[row["Form_diff"]],
+        "Attack_diff":[row["Attack_diff"]],
+        "Defense_diff":[row["Defense_diff"]]
+    })
+    lambda_h = home_results.predict(X).iloc[0]
+    lambda_a = away_results.predict(X).iloc[0]
+
+    p_h = get_probabilities(lambda_h,lambda_a)["H"]
+    p_d = get_probabilities(lambda_h,lambda_a)["D"]
+    p_a = get_probabilities(lambda_h,lambda_a)["A"]
+
+    predictions.append(["H","D","A"][np.argmax([p_h,p_d,p_a])])
+
+accuracy = accuracy_score(val_data["Result"],predictions)
+print(accuracy)
+
+
