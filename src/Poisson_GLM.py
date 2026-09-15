@@ -6,7 +6,8 @@ import json
 import matplotlib.pyplot as plt
 import math
 from sklearn.metrics import accuracy_score
-
+import time
+from scipy.stats import poisson
 
 form_guide = pd.read_csv("C:/Users/johnn/Documents/Python/Prem_Prediction_New/Data/processed/prem_form_guide.csv")
 df = pd.read_csv("C:/Users/johnn/Documents/Python/Prem_Prediction_New/Data/processed/full_prem_data.csv")
@@ -95,8 +96,10 @@ form_guide["Defense_diff"] = form_guide["Home Defense Form"] - form_guide["Away 
 # print(form_guide.columns)
 
 # Defining the training, validation and test data
-train_split = form_guide[form_guide["Season"]=="2018-2019"].index[0]
-val_split = form_guide[form_guide["Season"]=="2020-2021"].index[0]
+s1 = "2018-2019"
+s2 = "2020-2021"
+train_split = form_guide[form_guide["Season"]== s1].index[0]
+val_split = form_guide[form_guide["Season"]==s2].index[0]
 
 train_data = form_guide.iloc[:train_split]
 val_data = form_guide.iloc[train_split:val_split]
@@ -161,45 +164,46 @@ away_results = away_model.fit()
 
 
 
-def get_probabilities(l_H,l_A):
+from scipy.stats import poisson
 
-    N = max(l_H,l_A)
-    poisson_func = lambda x: (x[1]**x[0] * np.exp(-x[1]))/math.factorial(x[0])
-    home_probs = [poisson_func([x,l_H]) for x in range(int(5*N))]
-    away_probs = [poisson_func([x,l_A]) for x in range(int(5*N))]
+def get_probabilities(l_H, l_A):
 
-    home_sum = 0
-    draw_sum = 0
-    away_sum = 0
-    for i in range(int(5*N)):
-        h_prob = home_probs[i]
-        home_sum += (h_prob * sum(away_probs[:i]))
-        draw_sum += (h_prob * away_probs[i])
-        away_sum += (h_prob * sum(away_probs[i+1:]))
+    N = int(5 * max(l_H, l_A))
+    goals = np.arange(N)
 
-    return {"H":home_sum,"D":draw_sum,"A":away_sum}
+    home_probs = poisson.pmf(goals, l_H)
+    away_probs = poisson.pmf(goals, l_A)
 
+    away_cumulative = np.cumsum(away_probs)
+
+    home_sum = np.sum(
+        home_probs * np.concatenate(([0], away_cumulative[:-1]))
+    )
+
+    draw_sum = np.sum(home_probs * away_probs)
+
+    away_sum = np.sum(
+        home_probs * (away_cumulative[-1] - away_cumulative)
+    )
+
+    return {"H": home_sum, "D": draw_sum, "A": away_sum}
+
+X_val = val_data[["ELO_diff","Form_diff","Attack_diff","Defense_diff"]]
+lambda_h = home_results.predict(X_val)
+lambda_a = away_results.predict(X_val)
 
 
 predictions = []
 
-for _, row in val_data.iterrows():
-    X = pd.DataFrame({
-        "ELO_diff": [row["ELO_diff"]],
-        "Form_diff":[row["Form_diff"]],
-        "Attack_diff":[row["Attack_diff"]],
-        "Defense_diff":[row["Defense_diff"]]
-    })
-    lambda_h = home_results.predict(X).iloc[0]
-    lambda_a = away_results.predict(X).iloc[0]
 
-    p_h = get_probabilities(lambda_h,lambda_a)["H"]
-    p_d = get_probabilities(lambda_h,lambda_a)["D"]
-    p_a = get_probabilities(lambda_h,lambda_a)["A"]
-
-    predictions.append(["H","D","A"][np.argmax([p_h,p_d,p_a])])
+for l_H,l_A in zip(lambda_h,lambda_a):
+    probabilities = get_probabilities(l_H,l_A)
+    predictions.append(
+        max(probabilities, key=probabilities.get)
+    )
 
 accuracy = accuracy_score(val_data["Result"],predictions)
-print(accuracy)
+print(f"Length of Predictions List is {len(predictions)}.")
+print(f"Accuracy of these Predictions on data between {s1} and {s2} is {accuracy*100:.2f}%.")
 
 
