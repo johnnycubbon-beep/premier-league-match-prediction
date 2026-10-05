@@ -42,7 +42,7 @@ One of the first approaches investigated was a **form-based model**.
 
 For each team, historical match results were used to construct recent-form features. Goal-based form was also investigated, including rolling averages over different historical windows.
 
-The project also explores rating-based approaches such as Elo ratings.
+The project also explores rating-based approaches such as Elo ratings. Elo ratings ended up having the most predictive power.
 
 An important consideration throughout the project is avoiding temporal leakage: features for a match must only use information that would have been available immediately before that match.
 
@@ -53,6 +53,7 @@ The project investigates several approaches, including:
 - Decision trees
 - Random forests
 - Elo-based models
+- Poisson GLM 
 - Simple baseline predictors
 
 Decision-tree complexity is varied to investigate the bias-variance trade-off and the effect of overfitting.
@@ -63,15 +64,9 @@ For example, increasingly deep trees can fit the training data extremely well wh
 
 Simple recent-form features provide only modest predictive power.
 
-For example, using recent goal-form features with a small decision tree produced test accuracy around:
+Using ELO features and a Poisson GLM model, we can achieve prediction accuracy between 56% and 58%, outperforming both Decision Trees and Random Forests. Future improvements will involve comparing probabilities outputted by the GLM to bookies odds as well as additional feature engineering ("days since most recent game", "relative importance of the game" etc).
 
-**53%**
 
-This is only a modest improvement over simple baselines, highlighting how difficult football prediction is.
-
-Increasing tree depth can dramatically increase training performance without improving — and often while worsening — test performance.
-
-This provides a useful practical illustration of the bias-variance trade-off.
 
 ## Statistical considerations
 
@@ -101,18 +96,5 @@ Some of the most useful conclusions from the project have been methodological ra
 4. **Training accuracy can give a misleading impression of model quality.**
 5. **Football contains substantial irreducible uncertainty.**
 
-The project has also motivated further investigation into probabilistic models, including Poisson models for football scores.
 
-## Project structure
 
-```text
-prem_prediction/
-├── data/
-├── notebooks/
-├── src/
-│   ├── decision_tree.py
-│   ├── random_forest.py
-│   └── elo.py
-├── results/
-├── README.md
-└── requirements.txt
