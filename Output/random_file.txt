@@ -1,0 +1,103 @@
+# Initialising ELO
+elo = {}
+home_elos = []
+away_elos = []
+
+# ELO constant initialisations. K determines the size of the changes after each match. 
+# d determines how much promoted team ELO is discounted.
+K = 20
+d = 150
+
+# Loop through all the matches and update the elo dictionary after each match
+for i in df.index:
+    
+    home_team = df.iloc[i]["home_team"]
+    away_team = df.iloc[i]["away_team"]
+    result   = df.iloc[i]["result"]
+    season   = df.iloc[i]["season"]
+
+    if i in season_start_indices:
+        last_season = df.iloc[i-1]["season"]
+        
+        for team in relegated_teams[last_season]:
+            elo.pop(team)
+
+    # If team not seen before initialise elo as 1500
+    if home_team in elo:
+        home_elo = elo[home_team]
+    elif season == "1993-1994":
+        home_elo = 1500
+    else:
+        home_elo = (sum(elo.values())/len(elo.values())) - d
+
+    if away_team in elo:
+        away_elo = elo[away_team]
+    elif season == "1993-1994":
+        away_elo = 1500
+    else:
+        away_elo = (sum(elo.values())/len(elo.values())) - d
+
+    # Add to respective elo lists
+    home_elos.append(home_elo)
+    away_elos.append(away_elo)
+
+    # Home win and away win probabilities
+    h_prob = 1 / (1 + 10**((away_elo - home_elo)/400))
+    a_prob = 1 - h_prob
+
+    # Getting the home score
+    if result == 'H':
+        h_score = 1
+    elif result == 'A':
+        h_score = 0
+    elif result == 'D':
+        h_score = 0.5
+    a_score = 1 - h_score
+
+    # Formula for the ELO changes: if h_prob close to zero and h_score==1 biggest change
+    elo[home_team] = home_elo + K * (h_score - h_prob)
+    elo[away_team] = away_elo + K * (a_score - a_prob)
+
+# Adding ELO columns to both df and form_guide 
+df["Home ELO"] = home_elos
+df["Away ELO"] = away_elos
+elo_data = df[["Match ID","Home ELO","Away ELO"]]
+form_guide = form_guide.merge(elo_data,on="Match ID",how="left")
+
+
+# print(df[df["Match ID"]==11003][["home_team","away_team","Home ELO","Away ELO"]])
+# print(form_guide[form_guide["Match ID"]==11003][["Home Team","Away Team","Home ELO","Away ELO"]])
+
+
+
+
+#Define Predictors and Response Variables
+X = form_guide[[
+    "Home ELO",
+    "Away ELO",
+    "Home Form",
+    "Away Form"]]
+Y = form_guide["Result"]
+
+# Keeping 2020-2021 to 2025-2026 as precious test data then tuning the parameters 
+# using everything up to this point 
+split_1 = form_guide[form_guide["Season"] == "2020-2021"].index[0]
+split_2 = form_guide[form_guide["Season"] == "2025-2026"].index[0]
+
+# Predictor Data
+X_train = X.iloc[:split_1]
+X_test = X.iloc[split_1:split_2]
+
+# Response Data
+Y_train = Y.iloc[:split_1]
+Y_test = Y.iloc[split_1:split_2]
+
+# Initialise the random forest
+forest = RandomForestClassifier(
+    n_estimators=100,
+    criterion='gini',
+    max_depth=6,
+    max_features=3,
+    bootstrap=True,
+    max_samples=None
+)

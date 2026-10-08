@@ -22,7 +22,7 @@ test_end = form_guide[form_guide["Season"] == "2025-2026"].index[0]
 X_train, X_test = X.iloc[:train_end], X.iloc[train_end:test_end]
 y_train, y_test = y.iloc[:train_end], y.iloc[train_end:test_end]
 
-tree = DecisionTreeClassifier(criterion="gini", max_depth=3, random_state=42)
+tree = DecisionTreeClassifier(criterion="gini", max_depth=5, random_state=42)
 tree.fit(X_train, y_train)
 predictions = tree.predict(X_test)
 
