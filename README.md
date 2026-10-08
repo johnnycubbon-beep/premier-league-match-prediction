@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Premier League Match Prediction
 
 A statistical and machine learning project investigating how well Premier League match outcomes can be predicted from historical match and team-performance data.
@@ -98,3 +99,34 @@ Some of the most useful conclusions from the project have been methodological ra
 
 
 
+=======
+# Premier League Match Prediction
+
+This project explores Premier League match outcomes with decision trees, a random forest, Elo ratings, and Poisson goal models.
+
+## Data workflow
+
+The season files in `Data/raw/` are the source match tables. Run the preparation script from any working directory:
+
+```powershell
+python src/prepare_data.py
+```
+
+The script writes the canonical processed match table and the pre-match feature table to `Data/processed/`. It calculates form from each team's previous home or away matches and stores pre-match Elo ratings. The model scripts read these shared feature files instead of rebuilding them.
+
+Run an individual analysis from the project root:
+
+```powershell
+python src/decision_tree.py
+python src/random_forest.py
+python src/elo_model.py
+python src/Poisson_GLM.py
+python src/tune_elo_glm.py
+python src/explore_data.py
+python src/dixon_coles_check.py
+```
+
+The Elo tuning script compares K values, promoted-team starting ratings, and relegation handling on 2018–19 and 2019–20. It saves its leaderboard to `Output/elo_glm_tuning.csv` and leaves 2020–21 onward out of parameter selection.
+
+Install the packages listed in `requirements.txt` with `pip install -r requirements.txt`.
+>>>>>>> 6b66ed2 (Optimisation over Parameters K and d in ELO claculation.)
