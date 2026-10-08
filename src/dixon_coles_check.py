@@ -1,31 +1,30 @@
-import pandas as pd
-import statsmodels.api as sm
-import statsmodels.formula.api as smf
+"""Inspect low-score dependence ratios for a small historical sample."""
+
+from pathlib import Path
+
 import numpy as np
-import json
-import matplotlib.pyplot as plt
-import math
-from sklearn.metrics import accuracy_score
-import time
-from scipy.stats import poisson
+import pandas as pd
 
-df = pd.read_csv("C:/Users/johnn/Documents/Python/Prem_Prediction_New/Data/processed/full_prem_data.csv")
-df = df[df["season"].isin(["1993-1994","1994-1995","1995-1996"])]
-home_probs = df["home_goals"].value_counts()/len(df)
-away_probs = df["away_goals"].value_counts()/len(df)
-result_probs = df[["home_goals","away_goals"]].value_counts()/len(df)
-print(home_probs.index)
-print(result_probs.index)
-print(result_probs.loc[(2.0,1.0)])
 
-indep_ratios = np.zeros((10,10))
-for h in range(10):
-    for a in range(10):
-        try:
-            indep_ratios[h,a] = result_probs.loc[(float(h),float(a))]/(home_probs.loc[float(h)] * away_probs.loc[float(a)])
-        except:
-            indep_ratios[h,a] = 0
+ROOT = Path(__file__).resolve().parents[1]
+DATA_FILE = ROOT / "Data" / "processed" / "full_prem_data.csv"
+SEASONS = ["1993-1994", "1994-1995", "1995-1996"]
+MAX_GOALS = 9
 
-for h,a in [(0,0), (1,0), (0,1), (1,1)]:
-    print(f"{h}-{a}: "
-          f"{indep_ratios[h,a]:.3f}")
+matches = pd.read_csv(DATA_FILE)
+matches = matches[matches["season"].isin(SEASONS)]
+home_probabilities = matches["home_goals"].value_counts(normalize=True)
+away_probabilities = matches["away_goals"].value_counts(normalize=True)
+score_probabilities = matches.groupby(["home_goals", "away_goals"]).size() / len(matches)
+
+ratios = np.full((MAX_GOALS + 1, MAX_GOALS + 1), np.nan)
+for home_goals in range(MAX_GOALS + 1):
+    for away_goals in range(MAX_GOALS + 1):
+        home_marginal = home_probabilities.get(home_goals, 0)
+        away_marginal = away_probabilities.get(away_goals, 0)
+        if home_marginal and away_marginal:
+            joint = score_probabilities.get((home_goals, away_goals), 0)
+            ratios[home_goals, away_goals] = joint / (home_marginal * away_marginal)
+
+for score in [(0, 0), (1, 0), (0, 1), (1, 1)]:
+    print(f"{score[0]}-{score[1]}: {ratios[score]:.3f}")
